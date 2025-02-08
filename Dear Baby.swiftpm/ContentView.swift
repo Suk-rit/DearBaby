@@ -504,7 +504,7 @@ struct HomeView: View {
             }
         
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Little Moments")
+        .navigationTitle("Dear Baby")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
