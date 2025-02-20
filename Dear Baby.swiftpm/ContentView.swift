@@ -1,6 +1,9 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import AVFoundation
+import UserNotifications
+//hello baby
 
 struct Memory: Identifiable {
     let id: UUID
@@ -10,7 +13,8 @@ struct Memory: Identifiable {
     let description: String
     var additionalImages: [UIImage]?
     var isInSpace: Bool
-    var spaceImage: UIImage? // Add this property
+    var spaceImage: UIImage?
+    var reminder: Reminder?
     
     init(
         id: UUID = UUID(),
@@ -20,7 +24,8 @@ struct Memory: Identifiable {
         description: String,
         additionalImages: [UIImage]? = nil,
         isInSpace: Bool = false,
-        spaceImage: UIImage? = nil  // Add this parameter
+        spaceImage: UIImage? = nil,
+        reminder: Reminder? = nil
     ) {
         self.id = id
         self.title = title
@@ -29,7 +34,8 @@ struct Memory: Identifiable {
         self.description = description
         self.additionalImages = additionalImages
         self.isInSpace = isInSpace
-        self.spaceImage = spaceImage  // Initialize the property
+        self.spaceImage = spaceImage
+        self.reminder = reminder
     }
 }
 
@@ -66,9 +72,7 @@ struct ContentView: View {
     @State private var selectedBabyIndex = 0
     @State private var showingSettings = false
     @State private var showingBabyPicker = false
-    
-    
-    // Sample data with local images
+
     @State private var babies: [Baby] = [
         Baby(
             id: UUID(),
@@ -122,14 +126,13 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Home Tab
             NavigationView {
                 HomeView(
                                     selectedBabyIndex: $selectedBabyIndex,
                                     showingBabyPicker: $showingBabyPicker,
                                     showingSettings: $showingSettings,
                                     babies: $babies,
-                                    selectedTab: $selectedTab  // Pass the selectedTab binding
+                                    selectedTab: $selectedTab
                                 )
             }
             .tabItem {
@@ -153,7 +156,7 @@ struct ContentView: View {
                         NavigationView {
                             BabySpaceView(
                                 baby: babies[selectedBabyIndex],
-                                babies: $babies,                // Add this binding
+                                babies: $babies,
                                         babyIndex: selectedBabyIndex,
                                 selectedTab: $selectedTab
                             )
@@ -243,7 +246,7 @@ struct AddMemoryView: View {
             
             // Photos Section
             Section {
-                // Show selected images
+                
                 if !selectedImages.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
@@ -283,7 +286,6 @@ struct AddMemoryView: View {
                 Text("Photos (\(selectedImages.count)/6)")
             }
             
-            // Special Features Section
             Section {
                 Toggle(isOn: $addToSpace) {
                     
@@ -677,7 +679,7 @@ struct RecentMemoryView: View {
                         .font(.headline)
                         .foregroundColor(.black)
                     
-                    Text(memory.date.formatted(date: .abbreviated, time: .omitted))
+                    Text(memory.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -722,6 +724,8 @@ struct TimelineView: View {
            }
        }
     
+    @State private var showingReminders = false
+    
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 24) {
@@ -757,6 +761,17 @@ struct TimelineView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Timeline")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingReminders = true }) {
+                    Image(systemName: "bell.badge")
+                        .foregroundColor(Theme.color(for: gender))
+                }
+            }
+        }
+        .sheet(isPresented: $showingReminders) {
+            RemindersListView(babies: $babies, babyIndex: babyIndex)
+        }
     }
 }
 
@@ -998,6 +1013,9 @@ struct MemoryDetailView: View {
     @State private var selectedImageIndex = 0
     @State private var showingImageSelectionForSpace = false
     @State private var showingSuccessAlert = false
+    @State private var showingReminderSheet = false
+    @State private var showingReminderOptions = false
+    @State private var showingReminderDetail = false  // Add this line
     
     // Fixed dimensions
     private let heroImageHeight: CGFloat = 250
@@ -1016,19 +1034,46 @@ struct MemoryDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Hero Image Container
-                VStack(spacing: 0) {
-                    Image(uiImage: memory.image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: heroImageHeight)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal)
-                        .onTapGesture {
-                            selectedImageIndex = 0
-                            showingGallery = true
+                ZStack(alignment: .bottomTrailing) {
+                    VStack(spacing: 0) {
+                        Image(uiImage: memory.image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: heroImageHeight)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal)
+                            .onTapGesture {
+                                selectedImageIndex = 0
+                                showingGallery = true
+                            }
+                    }
+                    .padding(.top)
+                    
+                    // Reminder Button
+                    Button(action: {
+                        if memory.reminder != nil {
+                            showingReminderDetail = true
+                        } else {
+                            showingReminderOptions = true
                         }
+                    }) {
+                        HStack {
+                            if memory.reminder != nil {
+                                Image(systemName: "bell.badge.fill")
+                            } else {
+                                Image(systemName: "bell.badge")
+                            }
+                        }
+                        .font(.system(size: 20))
+                        .foregroundColor(Theme.color(for: gender))
+                        .padding(12)
+                        .background(Color(UIColor.systemBackground))
+                        .clipShape(Circle())
+                        .shadow(radius: 3)
+                    }
+                    .padding(.trailing, 32)
+                    .padding(.bottom, 12)
                 }
-                .padding(.top)
                 
                 // Content
                 VStack(alignment: .leading, spacing: 24) {
@@ -1205,6 +1250,38 @@ struct MemoryDetailView: View {
         } message: {
             Text("Memory added to Baby's Space!")
         }
+        .sheet(isPresented: $showingReminderSheet) {
+            ReminderView(
+                memory: binding(for: memory),
+                babies: $babies,
+                babyIndex: babyIndex
+            )
+        }
+        .sheet(isPresented: $showingReminderOptions) {
+            if memory.reminder != nil {
+                ReminderActionSheet(
+                    memory: binding(for: memory),
+                    babies: $babies,
+                    babyIndex: babyIndex
+                )
+            } else {
+                ReminderView(
+                    memory: binding(for: memory),
+                    babies: $babies,
+                    babyIndex: babyIndex
+                )
+            }
+        }
+        .sheet(isPresented: $showingReminderDetail) {
+            if let reminder = memory.reminder {
+                ReminderDetailView(
+                    memory: memory,
+                    reminder: reminder,
+                    babies: $babies,
+                    babyIndex: babyIndex
+                )
+            }
+        }
     }
     
     private func handleAddToSpace() {
@@ -1224,6 +1301,19 @@ struct MemoryDetailView: View {
             babies = updatedBabies
             showingSuccessAlert = true
         }
+    }
+    
+    private func binding(for memory: Memory) -> Binding<Memory> {
+        Binding(
+            get: { memory },
+            set: { newMemory in
+                var updatedBabies = babies
+                if let index = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                    updatedBabies[babyIndex].memories[index] = newMemory
+                    babies = updatedBabies
+                }
+            }
+        )
     }
 }
 
@@ -2515,5 +2605,1138 @@ struct EndingQuotes {
     
     static func randomQuote() -> String {
         quotes.randomElement() ?? quotes[0]
+    }
+}
+
+// Add this struct near other model definitions
+struct Reminder: Identifiable {
+    let id: UUID
+    let memoryId: UUID
+    var date: Date
+    var title: String // Add this
+    var notes: String
+    var voiceRecordingURL: URL?
+    var isCompleted: Bool
+    
+    init(
+        id: UUID = UUID(),
+        memoryId: UUID,
+        date: Date,
+        title: String = "", // Add this
+        notes: String = "",
+        voiceRecordingURL: URL? = nil,
+        isCompleted: Bool = false
+    ) {
+        self.id = id
+        self.memoryId = memoryId
+        self.date = date
+        self.title = title
+        self.notes = notes
+        self.voiceRecordingURL = voiceRecordingURL
+        self.isCompleted = isCompleted
+    }
+}
+
+// 1. Make AudioPlayerManager conform to ObservableObject
+class AudioPlayerManager: NSObject, AVAudioPlayerDelegate, ObservableObject {
+    @Published var isPlaying: Bool = false
+    var audioPlayer: AVAudioPlayer?
+    
+    func play(url: URL) {
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .default)
+            try audioSession.setActive(true)
+            
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.delegate = self
+            audioPlayer?.play()
+            isPlaying = true
+        } catch {
+            print("Playback failed: \(error)")
+        }
+    }
+    
+    func stop() {
+        audioPlayer?.stop()
+        isPlaying = false
+    }
+    
+    // AVAudioPlayerDelegate
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        isPlaying = false
+    }
+}
+
+// Update ReminderView
+struct ReminderView: View {
+    @Binding var memory: Memory
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    var isEditing: Bool = false  // Add this parameter with default value
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var reminderDate = Date()
+    @State private var notes = ""
+    @State private var isRecording = false
+    @State private var recordingURL: URL?
+    @State private var audioRecorder: AVAudioRecorder?
+    @State private var showingDeleteAlert = false
+    @State private var reminderTitle = ""
+    @StateObject private var audioManager = AudioPlayerManager()
+    @State private var isPlayingPreview = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Reminder Details")) {
+                    TextField("Title", text: $reminderTitle)
+                    DatePicker("Open On", selection: $reminderDate, in: Date()...)
+                }
+                
+                Section(header: Text("Notes")) {
+                    TextEditor(text: $notes)
+                        .frame(height: 100)
+                }
+                
+                Section(header: Text("Voice Notes")) {
+                    if let _ = recordingURL {
+                        HStack {
+                            Image(systemName: "mic.fill")
+                                .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                            Text("Voice Note Saved")
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Button(action: deleteRecording) {
+                                Image(systemName: "trash.circle.fill")
+                                    .foregroundColor(.red)
+                                    .font(.system(size: 24))
+                            }
+                        }
+                    } else {
+                        Button(action: toggleRecording) {
+                            HStack {
+                                Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                                    .foregroundColor(isRecording ? .red : Theme.color(for: babies[babyIndex].gender))
+                                    .font(.system(size: 24))
+                                Text(isRecording ? "Stop Recording" : "Record Voice Note")
+                            }
+                        }
+                    }
+                }
+                
+                if memory.reminder != nil {
+                    Section {
+                        Button("Delete Reminder", role: .destructive) {
+                            showingDeleteAlert = true
+                        }
+                    }
+                }
+            }
+            .navigationTitle(isEditing ? "Edit Reminder" : "Set Reminder")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    dismiss()
+                },
+                trailing: Button("Save") {
+                    saveReminder()
+                }
+                .disabled(reminderTitle.isEmpty)
+            )
+            .onAppear {
+                if isEditing, let reminder = memory.reminder {
+                    reminderDate = reminder.date
+                    reminderTitle = reminder.title
+                    notes = reminder.notes
+                    recordingURL = reminder.voiceRecordingURL
+                }
+            }
+        }
+        .onDisappear {
+            audioManager.stop()
+            isPlayingPreview = false
+        }
+    }
+    
+    private func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+    
+    private func startRecording() {
+        let audioSession = AVAudioSession.sharedInstance()
+        
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            
+            let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let audioFilename = documentPath.appendingPathComponent("\(UUID().uuidString).m4a")
+            
+            let settings = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            
+            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.record()
+            isRecording = true
+        } catch {
+            print("Recording failed: \(error)")
+        }
+    }
+    
+    private func stopRecording() {
+        audioRecorder?.stop()
+        recordingURL = audioRecorder?.url
+        isRecording = false
+    }
+    
+    private func playRecording() {
+        guard let url = recordingURL else { return }
+        audioManager.play(url: url)
+    }
+    
+    private func saveReminder() {
+        if isEditing {
+            // When editing, append new notes to existing ones
+            let existingNotes = memory.reminder?.notes ?? ""
+            let newNotes = existingNotes.isEmpty ? notes : "\(existingNotes)\n\n\(notes)"
+            
+            let reminder = Reminder(
+                id: memory.reminder?.id ?? UUID(),
+                memoryId: memory.id,
+                date: reminderDate,
+                title: reminderTitle,
+                notes: newNotes,
+                voiceRecordingURL: recordingURL
+            )
+            
+            // Update the reminder
+            var updatedBabies = babies
+            if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                updatedBabies[babyIndex].memories[memoryIndex].reminder = reminder
+                babies = updatedBabies
+            }
+        } else {
+            // Create new reminder (existing implementation)
+            let reminder = Reminder(
+                memoryId: memory.id,
+                date: reminderDate,
+                title: reminderTitle,
+                notes: notes,
+                voiceRecordingURL: recordingURL
+            )
+            
+            var updatedBabies = babies
+            if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                updatedBabies[babyIndex].memories[memoryIndex].reminder = reminder
+                babies = updatedBabies
+            }
+        }
+        
+        // Schedule notification (existing implementation)
+        scheduleNotification()
+        
+        dismiss()
+    }
+    
+    private func scheduleNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Memory Reminder: \(memory.title)"
+        content.body = notes.isEmpty ? "Tap to view this memory" : notes
+        content.sound = .default
+        
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        
+        let identifier = memory.reminder?.id.uuidString ?? UUID().uuidString
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    private func deleteReminder() {
+        var updatedBabies = babies
+        if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+            // Remove notification
+            if let reminder = memory.reminder {
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+            }
+            
+            updatedBabies[babyIndex].memories[memoryIndex].reminder = nil
+            babies = updatedBabies
+        }
+        
+        dismiss()
+    }
+    
+    private func togglePlayback() {
+        if audioManager.isPlaying {
+            audioManager.stop()
+        } else {
+            playRecording()
+        }
+    }
+    
+    private func deleteRecording() {
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        recordingURL = nil
+        audioManager.stop()
+    }
+}
+
+// 3. Fix RemindersListView toolbar
+struct RemindersListView: View {
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    @Environment(\.dismiss) private var dismiss
+    
+    private var sortedReminders: [(Memory, Reminder)] {
+        let allMemories = babies[babyIndex].memories
+        let remindersWithMemories = allMemories.compactMap { memory -> (Memory, Reminder)? in
+            guard let reminder = memory.reminder else { return nil }
+            return (memory, reminder)
+        }
+        return remindersWithMemories.sorted { $0.1.date < $1.1.date }
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(sortedReminders, id: \.0.id) { memory, reminder in
+                    ReminderCard(
+                        memory: memory,
+                        reminder: reminder,
+                        babies: $babies,
+                        babyIndex: babyIndex
+                    )
+                }
+                .onDelete { indexSet in
+                    deleteReminders(at: indexSet)
+                }
+            }
+            .navigationTitle("Upcoming Reminders")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    EditButton()
+                }
+            }
+            .overlay {
+                if sortedReminders.isEmpty {
+                    if #available(iOS 17.0, *) {
+                        ContentUnavailableView(
+                            "No Reminders",
+                            systemImage: "bell.slash",
+                            description: Text("You haven't set any reminders yet")
+                        )
+                    } else {
+                        VStack(spacing: 12) {
+                            Image(systemName: "bell.slash")
+                                .font(.system(size: 40))
+                                .foregroundColor(.secondary)
+                            Text("No Reminders")
+                                .font(.headline)
+                            Text("You haven't set any reminders yet")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func deleteReminders(at indexSet: IndexSet) {
+        var updatedBabies = babies
+        for index in indexSet {
+            let (memory, reminder) = sortedReminders[index]
+            if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                // Remove notification
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+                
+                // Remove reminder
+                updatedBabies[babyIndex].memories[memoryIndex].reminder = nil
+            }
+        }
+        babies = updatedBabies
+    }
+}
+
+// 2. Update ReminderCard to use memory title when reminder title is empty
+struct ReminderCard: View {
+    let memory: Memory
+    let reminder: Reminder
+    @Binding var babies: [Baby]  // Add this
+    let babyIndex: Int          // Add this
+    @StateObject private var audioManager = AudioPlayerManager()
+    @State private var timeRemaining: String = ""
+    @State private var isUnlocked: Bool = false
+    @State private var showingDetail = false
+    @State private var showingCelebration = false
+    @State private var glowOpacity: Double = 0
+    @State private var scale: CGFloat = 1.0
+    @State private var sparkles: [(CGPoint, Double)] = []
+    @State private var showShimmer = false
+    @State private var showConfetti: Bool = false
+    @State private var rotationAngle: Double = 0
+    @State private var ribbonOffset: CGFloat = -50
+    @State private var ribbonOpacity: Double = 0
+    @State private var ribbonScale: CGFloat = 0.5
+    
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    private var displayTitle: String {
+        if !reminder.title.isEmpty {
+            return reminder.title
+        }
+        return memory.title
+    }
+    
+    private func updateTimeRemaining() {
+        let components = Calendar.current.dateComponents([.day, .hour, .minute, .second], from: Date(), to: reminder.date)
+        let wasLocked = !isUnlocked
+        isUnlocked = Date() >= reminder.date
+        
+        if isUnlocked && wasLocked {
+            // Start glowing animation when just unlocked
+            withAnimation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
+                glowOpacity = 0.8
+            }
+        }
+        
+        if isUnlocked {
+            timeRemaining = "Unlocked"
+        } else if let days = components.day, days > 0 {
+            timeRemaining = "\(days) day\(days == 1 ? "" : "s")"
+        } else if let hours = components.hour, hours > 0 {
+            timeRemaining = "\(hours) hour\(hours == 1 ? "" : "s")"
+        } else if let minutes = components.minute, minutes > 0 {
+            timeRemaining = "\(minutes) minute\(minutes == 1 ? "" : "s")"
+        } else if let seconds = components.second {
+            timeRemaining = "\(seconds) second\(seconds == 1 ? "" : "s")"
+        } else {
+            timeRemaining = "Now"
+            isUnlocked = true
+        }
+    }
+    
+    var body: some View {
+        Button(action: { 
+            if isUnlocked {
+                showingDetail = true
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {  // Changed from .topLeading to .top
+                    ZStack(alignment: .topLeading) {  // This one is correct
+                        Image(uiImage: memory.image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
+                        if isUnlocked {
+                            Text("🎀")
+                                .font(.system(size: 24))
+                                .offset(x: -12, y: -12)
+                                .opacity(ribbonOpacity)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(displayTitle)
+                            .font(.headline)
+                            .foregroundColor(isUnlocked ? .green : .primary)
+                        
+                        Text(reminder.date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Image(systemName: isUnlocked ? "lock.open.fill" : "clock")
+                                .foregroundColor(isUnlocked ? .green : .orange)
+                            Text(timeRemaining)
+                                .font(.caption)
+                                .foregroundColor(isUnlocked ? .green : .orange)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if reminder.voiceRecordingURL != nil {
+                        Image(systemName: "mic.fill")
+                            .foregroundColor(isUnlocked ? .green : .blue)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(
+                Group {
+                    if isUnlocked {
+                        ZStack {
+                            // Glowing background
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.green.opacity(0.1),
+                                            Color.green.opacity(0.15)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                            
+                            // Animated particles
+                            ForEach(0..<12) { index in
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.green,
+                                                Color.green.opacity(0.5)
+                                            ]),
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                    .frame(width: 4, height: 4)
+                                    .offset(x: CGFloat.random(in: -50...50), y: showConfetti ? 100 : -100)
+                                    .opacity(showConfetti ? 0 : 1)
+                                    .animation(
+                                        Animation
+                                            .easeOut(duration: 1.5)
+                                            .repeatForever(autoreverses: false)
+                                            .delay(Double(index) * 0.1),
+                                        value: showConfetti
+                                    )
+                            }
+                            
+                            // Shimmering effect
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.white.opacity(0),
+                                            Color.white.opacity(0.5),
+                                            Color.white.opacity(0)
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .offset(x: showShimmer ? 200 : -200)
+                                .opacity(0.3)
+                            
+                            // Border glow
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.green.opacity(0.7),
+                                            Color.green.opacity(0.3)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                                .scaleEffect(scale)
+                        }
+                        .rotationEffect(.degrees(rotationAngle))
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+                    }
+                }
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onChange(of: isUnlocked) { newValue in
+            if newValue {
+                startUnlockAnimation()
+            }
+        }
+        .onAppear {
+            if isUnlocked {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                    ribbonOpacity = 1
+                }
+            }
+        }
+        .onAppear {
+            updateTimeRemaining()
+        }
+        .onReceive(timer) { _ in
+            updateTimeRemaining()
+        }
+        .sheet(isPresented: $showingDetail) {
+            ReminderDetailView(
+                memory: memory,
+                reminder: reminder,
+                babies: $babies,
+                babyIndex: babyIndex
+            )
+        }
+    }
+    
+    private func startUnlockAnimation() {
+        // Show ribbon immediately without animation
+        ribbonOpacity = 1
+        
+        // Initial animation burst
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
+            scale = 1.05
+            rotationAngle = 2
+        }
+        
+        // Return to normal with subtle pulsing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(
+                Animation
+                    .easeInOut(duration: 2)
+                    .repeatForever(autoreverses: true)
+            ) {
+                scale = 1.02
+                rotationAngle = -2
+            }
+        }
+        
+        // Start confetti animation
+        showConfetti = true
+        
+        // Start shimmer animation
+        withAnimation(
+            Animation
+                .linear(duration: 3)
+                .repeatForever(autoreverses: false)
+        ) {
+            showShimmer = true
+        }
+        
+        // Add ribbon animation
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+            ribbonOffset = 0
+            ribbonScale = 1
+        }
+        
+        // Subtle ribbon bounce
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(
+                Animation
+                    .easeInOut(duration: 1.5)
+                    .repeatForever(autoreverses: true)
+            ) {
+                ribbonOffset = -5
+            }
+        }
+    }
+}
+
+// Add this new view for showing reminder details
+struct ReminderDetailView: View {
+    let memory: Memory
+    let reminder: Reminder
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    @StateObject private var audioManager = AudioPlayerManager()
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingNotesInput = false
+    @State private var showingVoiceRecording = false
+    @State private var showingDeleteAlert = false  // Add this
+    
+    private var isUnlocked: Bool {
+        Date() >= reminder.date
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Memory Image
+                    Image(uiImage: memory.image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal)
+                    
+                    // Memory Details
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(reminder.title)
+                            .font(.title2)
+                            .bold()
+                        
+                        Text("Reminder set for: " + reminder.date.formatted(date: .long, time: .shortened))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        // Notes Section
+                        if !reminder.notes.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Notes")
+                                    .font(.headline)
+                                
+                                if isUnlocked {
+                                    Text(reminder.notes)
+                                        .font(.body)
+                                } else {
+                                    HStack {
+                                        Image(systemName: "doc.text.fill")
+                                        Text("Notes are locked")
+                                        Spacer()
+                                        Image(systemName: "lock.fill")
+                                    }
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        
+                        // Voice Note Section
+                        if let url = reminder.voiceRecordingURL {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Voice Note")
+                                    .font(.headline)
+                                
+                                if isUnlocked {
+                                    Button(action: {
+                                        if audioManager.isPlaying {
+                                            audioManager.stop()
+                                        } else {
+                                            audioManager.play(url: url)
+                                        }
+                                    }) {
+                                        HStack {
+                                            Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                                                .font(.system(size: 24))
+                                            Text(audioManager.isPlaying ? "Stop Playing" : "Play Voice Note")
+                                        }
+                                        .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                    }
+                                } else {
+                                    HStack {
+                                        Image(systemName: "mic.fill")
+                                        Text("Voice Note is locked")
+                                        Spacer()
+                                        Image(systemName: "lock.fill")
+                                    }
+                                    .foregroundColor(.secondary)
+                                    .padding()
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        
+                        // Edit Options - Always show when not unlocked
+                        if !isUnlocked {
+                            VStack(spacing: 16) {
+                                Button(action: { showingNotesInput = true }) {
+                                    HStack {
+                                        Image(systemName: "square.and.pencil")
+                                        Text("Add More Notes")
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14))
+                                    }
+                                    .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Theme.color(for: babies[babyIndex].gender), lineWidth: 1)
+                                    )
+                                }
+                                
+                                if reminder.voiceRecordingURL != nil {
+                                    Button(action: { showingVoiceRecording = true }) {
+                                        HStack {
+                                            Image(systemName: "mic.fill")
+                                            Text("Change Voice Note")
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 14))
+                                        }
+                                        .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Theme.color(for: babies[babyIndex].gender), lineWidth: 1)
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.top)
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Reminder Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                leading: Button("Done") {
+                    dismiss()
+                },
+                trailing: Button(action: {
+                    showingDeleteAlert = true
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+            )
+        }
+        .alert("Delete Reminder?", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteReminder()
+            }
+        } message: {
+            Text("Are you sure you want to delete this reminder?")
+        }
+        .onDisappear {
+            audioManager.stop()
+        }
+        .sheet(isPresented: $showingNotesInput) {
+            NotesInputView(
+                memory: memory,
+                reminder: reminder,
+                babies: $babies,
+                babyIndex: babyIndex,
+                dismiss: { showingNotesInput = false }
+            )
+        }
+        .sheet(isPresented: $showingVoiceRecording) {
+            VoiceRecordingView(
+                memory: memory,
+                reminder: reminder,
+                babies: $babies,
+                babyIndex: babyIndex
+            )
+        }
+    }
+    
+    private func deleteReminder() {
+        var updatedBabies = babies
+        if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+            // Remove notification
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+            
+            // Remove reminder
+            updatedBabies[babyIndex].memories[memoryIndex].reminder = nil
+            babies = updatedBabies
+        }
+        dismiss()
+    }
+}
+
+// Update NotesInputView
+struct NotesInputView: View {
+    let memory: Memory
+    let reminder: Reminder
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    let dismiss: () -> Void
+    
+    @State private var notes = ""
+    @Environment(\.dismiss) private var dismissSheet
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Add New Notes")) {
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 100)
+                }
+            }
+            .navigationTitle("Add Notes")
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    dismissSheet()
+                },
+                trailing: Button("Save") {
+                    saveNotes()
+                }
+                .disabled(notes.isEmpty)
+            )
+        }
+    }
+    
+    private func saveNotes() {
+        var updatedBabies = babies
+        if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+            var updatedMemory = updatedBabies[babyIndex].memories[memoryIndex]
+            var updatedReminder = reminder
+            
+            let existingNotes = reminder.notes
+            updatedReminder.notes = existingNotes.isEmpty ? notes : "\(existingNotes)\n\n\(notes)"
+            
+            updatedMemory.reminder = updatedReminder
+            updatedBabies[babyIndex].memories[memoryIndex] = updatedMemory
+            babies = updatedBabies
+        }
+        
+        dismissSheet()  // Only dismiss the sheet, not the parent view
+    }
+}
+
+struct VoiceRecordingView: View {
+    let memory: Memory
+    let reminder: Reminder
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var audioManager = AudioPlayerManager()
+    @State private var isRecording = false
+    @State private var recordingURL: URL?
+    @State private var audioRecorder: AVAudioRecorder?
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Voice Recording")) {
+                    if let url = recordingURL {
+                        HStack {
+                            Image(systemName: "mic.fill")
+                                .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                            Text("Voice Note Saved")
+                                .foregroundColor(.secondary)
+                            
+                            Spacer()
+                            
+                            Button(action: deleteRecording) {
+                                Image(systemName: "trash.circle.fill")
+                                    .foregroundColor(.red)
+                                    .font(.system(size: 24))
+                            }
+                        }
+                    } else {
+                        Button(action: toggleRecording) {
+                            HStack {
+                                Image(systemName: isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                                    .foregroundColor(isRecording ? .red : Theme.color(for: babies[babyIndex].gender))
+                                    .font(.system(size: 24))
+                                    Text(isRecording ? "Stop Recording" : "Record Voice Note")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Change Voice Note")
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    dismiss()
+                },
+                trailing: Button("Save") {
+                    saveVoiceNote()
+                }
+                .disabled(recordingURL == nil)
+            )
+        }
+    }
+    
+    // Add necessary functions for voice recording management
+    private func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+    
+    private func startRecording() {
+        let audioSession = AVAudioSession.sharedInstance()
+        
+        do {
+            try audioSession.setCategory(.playAndRecord, mode: .default)
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            
+            let documentPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let audioFilename = documentPath.appendingPathComponent("\(UUID().uuidString).m4a")
+            
+            let settings = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 44100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+            
+            audioRecorder = try AVAudioRecorder(url: audioFilename, settings: settings)
+            audioRecorder?.record()
+            isRecording = true
+        } catch {
+            print("Recording failed: \(error)")
+        }
+    }
+    
+    private func stopRecording() {
+        audioRecorder?.stop()
+        recordingURL = audioRecorder?.url
+        isRecording = false
+    }
+    
+    private func deleteRecording() {
+        if let url = recordingURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        recordingURL = nil
+    }
+    
+    private func saveVoiceNote() {
+        if let url = recordingURL {
+            var updatedBabies = babies
+            if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                var updatedMemory = updatedBabies[babyIndex].memories[memoryIndex]
+                var updatedReminder = reminder
+                updatedReminder.voiceRecordingURL = url
+                updatedMemory.reminder = updatedReminder
+                updatedBabies[babyIndex].memories[memoryIndex] = updatedMemory
+                babies = updatedBabies
+            }
+        }
+        dismiss()  // Only dismiss this sheet
+    }
+}
+
+struct ReminderActionSheet: View {
+    @Binding var memory: Memory
+    @Binding var babies: [Baby]
+    let babyIndex: Int
+    @Environment(\.dismiss) private var dismiss
+    @State private var showingNotesInput = false
+    @State private var showingVoiceRecording = false
+    
+    private var isReminderUnlocked: Bool {
+        guard let reminder = memory.reminder else { return false }
+        return Date() >= reminder.date
+    }
+    
+    var body: some View {
+        NavigationView {
+            List {
+                if let reminder = memory.reminder {
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Current Reminder")
+                                    .font(.headline)
+                                
+                                if isReminderUnlocked {
+                                    Image(systemName: "lock.open.fill")
+                                        .foregroundColor(.green)
+                                }
+                            }
+                            
+                            if !reminder.notes.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Previous Notes")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    if isReminderUnlocked {
+                                        Text(reminder.notes)
+                                            .font(.body)
+                                    } else {
+                                        HStack {
+                                            Image(systemName: "doc.text.fill")
+                                            Text("Notes are locked")
+                                            Spacer()
+                                            Image(systemName: "lock.fill")
+                                        }
+                                        .foregroundColor(.secondary)
+                                        .padding()
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                            
+                            if !isReminderUnlocked {
+                                Divider()
+                                    .padding(.vertical)
+                                
+                                VStack(spacing: 16) {
+                                    Button(action: { showingNotesInput = true }) {
+                                        HStack {
+                                            Image(systemName: "square.and.pencil")
+                                            Text("Add More Notes")
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.gray)
+                                        }
+                                        .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                                    }
+                                    
+                                    if reminder.voiceRecordingURL != nil {
+                                        Button(action: { showingVoiceRecording = true }) {
+                                            HStack {
+                                                Image(systemName: "mic.fill")
+                                                Text("Change Voice Note")
+                                                Spacer()
+                                                Image(systemName: "chevron.right")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(.gray)
+                                            }
+                                            .foregroundColor(Theme.color(for: babies[babyIndex].gender))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Reminder Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                trailing: Button("Done") {
+                    dismiss()
+                }
+            )
+        }
+        .sheet(isPresented: $showingNotesInput) {
+            NotesInputView(
+                memory: memory,
+                reminder: memory.reminder!,
+                babies: $babies,
+                babyIndex: babyIndex,
+                dismiss: { showingNotesInput = false }
+            )
+        }
+        .sheet(isPresented: $showingVoiceRecording) {
+            VoiceRecordingView(
+                memory: memory,
+                reminder: memory.reminder!,
+                babies: $babies,
+                babyIndex: babyIndex
+            )
+        }
     }
 }
