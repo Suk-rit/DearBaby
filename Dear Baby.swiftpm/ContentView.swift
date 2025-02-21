@@ -68,72 +68,81 @@ enum Gender {
 }
 
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    
     @State private var selectedTab = 0
     @State private var selectedBabyIndex = 0
     @State private var showingSettings = false
     @State private var showingBabyPicker = false
-
-    @State private var babies: [Baby] = [
-        Baby(
-            id: UUID(),
-            name: "Aadya",
-            birthDate: Calendar.current.date(byAdding: .month, value: -6, to: Date())!,
-            image: UIImage(named: "baby_emma") ?? UIImage(systemName: "person.circle.fill")!,
-            memories: [
-                Memory(
-                    id: UUID(),
-                    title: "First Smile",
-                    date: Date(),
-                    image: UIImage(named: "emma_smile") ?? UIImage(systemName: "photo")!,
-                    description: "Her first beautiful smile! 😍",
-                    isInSpace: true
-                ),
-                Memory(
-                    id: UUID(),
-                    title: "First Crawl",
-                    date: Date(),
-                    image: UIImage(named: "emma_crawl") ?? UIImage(systemName: "photo")!,
-                    description: "Finally! Emma started to crawl 💃",
-                    isInSpace: true
-                )
-            ],
-            gender: .girl
-        ),
-        Baby(
-            id: UUID(),
-            name: "Lakshya",
-            birthDate: Calendar.current.date(byAdding: .month, value: -3, to: Date())!,
-            image: UIImage(named: "baby_liam") ?? UIImage(systemName: "person.circle.fill")!,
-            memories: [Memory(
-                id: UUID(),
-                title: "First Word",
-                date: Date(),
-                image: UIImage(named: "liam_word") ?? UIImage(systemName: "photo")!,
-                description: "Liam said papa for the first time 🥰",
-                isInSpace: true
-            )],
-            gender: .boy
-        ),
-        Baby(
-            id: UUID(),
-            name: "Kaashvi",
-            birthDate: Calendar.current.date(byAdding: .month, value: -9, to: Date())!,
-            image: UIImage(named: "kaashvi") ?? UIImage(systemName: "person.circle.fill")!,
-            memories: [],
-            gender: .girl
-        )
-    ]
+    @State private var babies: [Baby]
+    
+    
+    init() {
+        let demoBabies = [
+            Baby(id: UUID(), name: "Aadya", 
+                 birthDate: Calendar.current.date(byAdding: .month, value: -6, to: Date())!, 
+                 image: UIImage(named: "baby_emma") ?? UIImage(systemName: "person.circle.fill")!, 
+                 memories: [
+                    Memory(
+                        id: UUID(),
+                        title: "First Smile",
+                        date: Date(),
+                        image: UIImage(named: "First Smile") ?? UIImage(systemName: "photo")!,
+                        description: "Her first beautiful smile! 😍",
+                        isInSpace: true
+                    ),
+                    Memory(
+                        id: UUID(),
+                        title: "First Crawl",
+                        date: Date(),
+                        image: UIImage(named: "emma_crawl") ?? UIImage(systemName: "photo")!,
+                        description: "Finally! Emma started to crawl 💃",
+                        isInSpace: true
+                    )
+                 ], 
+                 gender: .girl),
+            Baby(id: UUID(), name: "Lakshya", 
+                 birthDate: Calendar.current.date(byAdding: .month, value: -3, to: Date())!, 
+                 image: UIImage(named: "baby_liam") ?? UIImage(systemName: "person.circle.fill")!, 
+                 memories: [
+                    Memory(
+                        id: UUID(),
+                        title: "First Word",
+                        date: Date(),
+                        image: UIImage(named: "liam_word") ?? UIImage(systemName: "photo")!,
+                        description: "Liam said papa for the first time 🥰",
+                        isInSpace: true
+                    )
+                 ], 
+                 gender: .boy),
+            Baby(id: UUID(), name: "Kaashvi", 
+                 birthDate: Calendar.current.date(byAdding: .month, value: -9, to: Date())!, 
+                 image: UIImage(named: "kaashvi") ?? UIImage(systemName: "person.circle.fill")!, 
+                 memories: [], 
+                 gender: .girl)
+        ]
+        _babies = State(initialValue: demoBabies)
+    }
     
     var body: some View {
+        Group {
+            if !hasCompletedOnboarding {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+            } else {
+                mainView
+            }
+        }
+    }
+    
+    var mainView: some View {
         TabView(selection: $selectedTab) {
             NavigationView {
                 HomeView(
-                                    selectedBabyIndex: $selectedBabyIndex,
-                                    showingBabyPicker: $showingBabyPicker,
-                                    showingSettings: $showingSettings,
-                                    babies: $babies,
-                                    selectedTab: $selectedTab
-                                )
+                    selectedBabyIndex: $selectedBabyIndex,
+                    showingBabyPicker: $showingBabyPicker,
+                    babies: $babies,
+                    selectedTab: $selectedTab
+                )
             }
             .tabItem {
                 Label("Home", systemImage: "house.fill")
@@ -152,29 +161,21 @@ struct ContentView: View {
                 Label("Add", systemImage: "plus.circle.fill")
             }
             .tag(1)
+            
             // Baby Space Tab
-                        NavigationView {
-                            BabySpaceView(
-                                baby: babies[selectedBabyIndex],
-                                babies: $babies,
-                                        babyIndex: selectedBabyIndex,
-                                selectedTab: $selectedTab
-                            )
-                            .navigationBarBackButtonHidden(true)
-                        }
-                        .tabItem {
-                            Label("Baby's Space", systemImage: "moon.stars.fill")
-                        }
-                        .tag(2)
-        }
-        .sheet(isPresented: $showingSettings) {
             NavigationView {
-                SettingsView()
-                    .navigationTitle("Settings")
-                    .navigationBarItems(trailing: Button("Done") {
-                        showingSettings = false
-                    })
+                BabySpaceView(
+                    baby: babies[selectedBabyIndex],
+                    babies: $babies,
+                    babyIndex: selectedBabyIndex,
+                    selectedTab: $selectedTab
+                )
+                .navigationBarBackButtonHidden(true)
             }
+            .tabItem {
+                Label("Baby's Space", systemImage: "moon.stars.fill")
+            }
+            .tag(2)
         }
         .actionSheet(isPresented: $showingBabyPicker) {
             ActionSheet(
@@ -188,6 +189,243 @@ struct ContentView: View {
         }
     }
 }
+
+struct OnboardingPage {
+    let title: String
+    let subtitle: String
+    let imageName: String
+    let features: [String]
+    let cta: String
+    let symbolColor: Color
+}
+
+struct OnboardingView: View {
+    @Binding var hasCompletedOnboarding: Bool
+    @State private var currentPage = 0
+    
+    private let pages = [
+        OnboardingPage(
+            title: "Your Baby's Life, Beautifully Organized!",
+            subtitle: "Store every milestone in a structured way and relive the journey anytime.",
+            imageName: "calendar.badge.clock",
+            features: [
+                "A chronological timeline to store memories from birth onwards",
+                "Organize photos, videos, and notes seamlessly",
+                "Effortlessly track special milestones, from first steps to birthdays"
+            ],
+            cta: "Swipe to discover more magic!",
+            symbolColor: Color(#colorLiteral(red: 0.91, green: 0.38, blue: 0.45, alpha: 1))
+        ),
+        OnboardingPage(
+            title: "A Magical Photobook, Created Just for You!",
+            subtitle: "A beautiful, auto-generated album capturing your baby's best moments each year.",
+            imageName: "photo.on.rectangle.angled",
+            features: [
+                "A magical photobook that compiles your baby's journey into an annual keepsake",
+                "AI-powered storytelling that highlights the most special moments",
+                "Option to print & share with loved ones"
+            ],
+            cta: "Swipe for one last surprise!",
+            symbolColor: Color(#colorLiteral(red: 0.33, green: 0.53, blue: 0.85, alpha: 1))
+        ),
+        OnboardingPage(
+            title: "Leave Messages for the Future!",
+            subtitle: "Set reminders, store heartfelt messages, and unlock them when the time is right.",
+            imageName: "gift.fill",
+            features: [
+                "Write a letter or memory for your baby's future self",
+                "Lock it away until a special date (first birthday, graduation, etc.)",
+                "Surprise them with a priceless gift of love & memories when the time arrives"
+            ],
+            cta: "Begin Your Journey",
+            symbolColor: Color(#colorLiteral(red: 0.55, green: 0.35, blue: 0.85, alpha: 1))
+        )
+    ]
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(#colorLiteral(red: 0.95, green: 0.95, blue: 1.0, alpha: 1)),
+                    Color(#colorLiteral(red: 1.0, green: 0.95, blue: 0.98, alpha: 1))
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            VStack {
+                TabView(selection: $currentPage) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        OnboardingPageView(
+                            page: pages[index],
+                            isLastPage: index == pages.count - 1,
+                            hasCompletedOnboarding: $hasCompletedOnboarding
+                        )
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                
+                HStack(spacing: 12) {
+                    ForEach(0..<pages.count, id: \.self) { index in
+                        Circle()
+                            .fill(currentPage == index ? pages[index].symbolColor : Color.gray.opacity(0.3))
+                            .frame(width: currentPage == index ? 12 : 8,
+                                   height: currentPage == index ? 12 : 8)
+                            .overlay(
+                                Circle()
+                                    .stroke(pages[index].symbolColor, lineWidth: currentPage == index ? 2 : 0)
+                                    .scaleEffect(currentPage == index ? 1.3 : 1)
+                            )
+                            .animation(.spring(response: 0.3), value: currentPage)
+                    }
+                }
+                .padding(.bottom, 20)
+            }
+        }
+    }
+}
+
+struct OnboardingPageView: View {
+    let page: OnboardingPage
+    let isLastPage: Bool
+    @Binding var hasCompletedOnboarding: Bool
+    
+    @State private var showTitle = false
+    @State private var showImage = false
+    @State private var showFeatures = false
+    @State private var showCTA = false
+    @State private var rotation = 0.0
+    @State private var isHovering = false
+    @State private var scale: CGFloat = 0.9
+    
+    var body: some View {
+        VStack(spacing: 30) {
+            Text(page.title)
+                .font(.system(size: 32, weight: .bold))
+                .multilineTextAlignment(.center)
+                .foregroundColor(Color(#colorLiteral(red: 0.2, green: 0.2, blue: 0.3, alpha: 1)))
+                .padding(.horizontal)
+                .opacity(showTitle ? 1 : 0)
+                .offset(y: showTitle ? 0 : 20)
+                .scaleEffect(showTitle ? 1 : 0.8)
+            
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 160, height: 160)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10)
+                    .scaleEffect(isHovering ? 1.05 : 1)
+                    .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isHovering)
+                
+                Image(systemName: page.imageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 80)
+                    .foregroundColor(page.symbolColor)
+                    .rotationEffect(.degrees(isHovering ? 8 : -8))
+                    .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isHovering)
+            }
+            .rotation3DEffect(.degrees(rotation), axis: (x: 0, y: 1, z: 0))
+            .opacity(showImage ? 1 : 0)
+            .scaleEffect(showImage ? 1 : 0.6)
+            
+            VStack(alignment: .leading, spacing: 15) {
+                ForEach(page.features.indices, id: \.self) { index in
+                    HStack(spacing: 12) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(page.symbolColor)
+                            .rotationEffect(.degrees(showFeatures ? 0 : -30))
+                            .animation(
+                                .spring(response: 0.5, dampingFraction: 0.6)
+                                .delay(Double(index) * 0.1),
+                                value: showFeatures
+                            )
+                        
+                        Text(page.features[index])
+                            .font(.body)
+                            .foregroundColor(Color(#colorLiteral(red: 0.2, green: 0.2, blue: 0.3, alpha: 1)))
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.7))
+                    )
+                    .opacity(showFeatures ? 1 : 0)
+                    .offset(x: showFeatures ? 0 : -20)
+                    .animation(
+                        .spring(response: 0.6, dampingFraction: 0.7)
+                        .delay(Double(index) * 0.1),
+                        value: showFeatures
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+            
+            if isLastPage {
+                Button(action: { 
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                        hasCompletedOnboarding = true
+                    }
+                }) {
+                    Text(page.cta)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(page.symbolColor)
+                        )
+                        .padding(.horizontal, 30)
+                        .scaleEffect(isHovering ? 1.02 : 1)
+                }
+                .opacity(showCTA ? 1 : 0)
+                .scaleEffect(showCTA ? 1 : 0.8)
+            } else {
+                Text(page.cta)
+                    .font(.headline)
+                    .foregroundColor(page.symbolColor)
+                    .opacity(showCTA ? 1 : 0)
+                    .scaleEffect(showCTA ? 1 : 0.8)
+            }
+        }
+        .padding(.vertical, 40)
+        .scaleEffect(scale)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                scale = 1
+            }
+            
+            withAnimation(.easeOut(duration: 0.6)) {
+                showTitle = true
+            }
+            
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.2)) {
+                showImage = true
+                rotation = 360
+            }
+            
+            withAnimation(.easeOut(duration: 0.6).delay(0.4)) {
+                showFeatures = true
+            }
+            
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6)) {
+                showCTA = true
+            }
+            
+            withAnimation(
+                .easeInOut(duration: 2)
+                .repeatForever(autoreverses: true)
+            ) {
+                isHovering = true
+            }
+        }
+    }
+}
+
 struct AddMemoryView: View {
     @Binding var selectedTab: Int
     @Binding var babies: [Baby]
@@ -531,8 +769,6 @@ struct BabyProfileCard: View {
                     .font(.title3)
                     .foregroundColor(.white.opacity(0.9))
             }
-            
-            // Change Profile Button
             Button(action: action) {
                 Text("Change Profile")
                     .font(.subheadline.bold())
@@ -560,14 +796,13 @@ struct BabyProfileCard: View {
 struct HomeView: View {
     @Binding var selectedBabyIndex: Int
     @Binding var showingBabyPicker: Bool
-    @Binding var showingSettings: Bool
     @Binding var babies: [Baby]
     @Binding var selectedTab: Int
     
     private var recentMemories: [Memory] {
             babies[selectedBabyIndex].memories
-                .sorted { $0.date > $1.date } // Descending order
-                .prefix(3) // Only take the 3 most recent
+                .sorted { $0.date > $1.date }
+                .prefix(3)
                 .map { $0 }
         }
     
@@ -641,11 +876,6 @@ struct HomeView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: { showingSettings = true }) {
-                    Image(systemName: "gear")
-                        .foregroundColor(.primary)
-                        .font(.system(size: 18, weight: .medium))
-                }
             }
         }
         
@@ -672,6 +902,7 @@ struct RecentMemoryView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 70, height: 70)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -714,10 +945,9 @@ struct TimelineView: View {
     @Binding var babies: [Baby]
         let babyIndex: Int
     private var sortedMemories: [Memory] {
-            memories.sorted { $0.date > $1.date } // Descending order (newest first)
+            memories.sorted { $0.date > $1.date }
         }
     
-    // Add a computed property for grouped memories
        private var groupedMemories: [Date: [Memory]] {
            Dictionary(grouping: sortedMemories) { memory in
                Calendar.current.startOfDay(for: memory.date)
@@ -779,17 +1009,20 @@ struct TimelineCard: View {
     let memory: Memory
     let gender: Gender
     @Binding var babies: [Baby]
-        let babyIndex: Int
+    let babyIndex: Int
+    
     var body: some View {
         NavigationLink(destination: MemoryDetailView(memory: memory,
-                                                     gender: gender,
-                                                     babies: $babies,
-                                                     babyIndex: babyIndex)) {
+                                                   gender: gender,
+                                                   babies: $babies,
+                                                   babyIndex: babyIndex)) {
             VStack(alignment: .leading, spacing: 12) {
                 Image(uiImage: memory.image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity)
                     .frame(height: 200)
+                    .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 
                 VStack(alignment: .leading, spacing: 8) {
@@ -909,81 +1142,6 @@ struct SectionHeader: View {
     }
 }
 
-struct SettingsView: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var notificationsEnabled = true
-    @State private var darkModeEnabled = false
-    @State private var showingDeleteAlert = false
-    
-    var body: some View {
-        List {
-            Section(header: Text("Profile")) {
-                NavigationLink(destination: Text("Edit Profile")) {
-                    Label("Edit Profile", systemImage: "person.circle")
-                }
-                NavigationLink(destination: Text("Change Password")) {
-                    Label("Change Password", systemImage: "lock")
-                }
-            }
-            
-            Section(header: Text("Preferences")) {
-                Toggle(isOn: $notificationsEnabled) {
-                    Label("Notifications", systemImage: "bell")
-                }
-                Toggle(isOn: $darkModeEnabled) {
-                    Label("Dark Mode", systemImage: "moon")
-                }
-            }
-            
-            Section(header: Text("Data")) {
-                Button {
-                    // Export data logic
-                } label: {
-                    Label("Export Data", systemImage: "square.and.arrow.up")
-                }
-                
-                Button {
-                    // Backup logic
-                } label: {
-                    Label("Backup", systemImage: "arrow.clockwise.icloud")
-                }
-            }
-            
-            Section(header: Text("Support")) {
-                NavigationLink(destination: Text("Help Center")) {
-                    Label("Help Center", systemImage: "questionmark.circle")
-                }
-                
-                NavigationLink(destination: Text("Privacy Policy")) {
-                    Label("Privacy Policy", systemImage: "hand.raised")
-                }
-                
-                Link(destination: URL(string: "https://www.example.com")!) {
-                    Label("Rate App", systemImage: "star")
-                }
-            }
-            
-            Section {
-                Button(role: .destructive) {
-                    showingDeleteAlert = true
-                } label: {
-                    Label("Delete Account", systemImage: "trash")
-                }
-            }
-        }
-        .navigationTitle("Settings")
-        .alert("Delete Account", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                // Delete account logic
-            }
-        } message: {
-            Text("Are you sure you want to delete your account? This action cannot be undone.")
-        }
-    }
-}
-
-// Helper extension for image compression
 extension UIImage {
     func compressed() -> UIImage {
         let maxSize: CGFloat = 1024
@@ -1015,9 +1173,7 @@ struct MemoryDetailView: View {
     @State private var showingSuccessAlert = false
     @State private var showingReminderSheet = false
     @State private var showingReminderOptions = false
-    @State private var showingReminderDetail = false  // Add this line
-    
-    // Fixed dimensions
+    @State private var showingReminderDetail = false
     private let heroImageHeight: CGFloat = 250
     private let gridImageSize: CGFloat = 160
     private let gridSpacing: CGFloat = 12
@@ -1033,47 +1189,58 @@ struct MemoryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Hero Image Container
-                ZStack(alignment: .bottomTrailing) {
-                    VStack(spacing: 0) {
-                        Image(uiImage: memory.image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: heroImageHeight)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .padding(.horizontal)
-                            .onTapGesture {
-                                selectedImageIndex = 0
-                                showingGallery = true
-                            }
-                    }
-                    .padding(.top)
-                    
-                    // Reminder Button
-                    Button(action: {
-                        if memory.reminder != nil {
-                            showingReminderDetail = true
-                        } else {
-                            showingReminderOptions = true
-                        }
-                    }) {
-                        HStack {
-                            if memory.reminder != nil {
-                                Image(systemName: "bell.badge.fill")
-                            } else {
-                                Image(systemName: "bell.badge")
-                            }
-                        }
-                        .font(.system(size: 20))
-                        .foregroundColor(Theme.color(for: gender))
-                        .padding(12)
-                        .background(Color(UIColor.systemBackground))
-                        .clipShape(Circle())
-                        .shadow(radius: 3)
-                    }
-                    .padding(.trailing, 32)
-                    .padding(.bottom, 12)
-                }
+
+                GeometryReader { geometry in
+                                    ZStack(alignment: .bottomTrailing) {
+                                        VStack(spacing: 0) {
+                                            Image(uiImage: memory.image)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: geometry.size.width - 32)
+                                                .frame(height: heroImageHeight)
+                                                .clipped()
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(Color(.systemBackground))
+                                                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                                                )
+                                                .onTapGesture {
+                                                    selectedImageIndex = 0
+                                                    showingGallery = true
+                                                }
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.horizontal, 16)
+                                        
+                                        // Reminder Button
+                                        Button(action: {
+                                            if memory.reminder != nil {
+                                                showingReminderDetail = true
+                                            } else {
+                                                showingReminderOptions = true
+                                            }
+                                        }) {
+                                            HStack {
+                                                if memory.reminder != nil {
+                                                    Image(systemName: "bell.badge.fill")
+                                                } else {
+                                                    Image(systemName: "bell.badge")
+                                                }
+                                            }
+                                            .font(.system(size: 20))
+                                            .foregroundColor(Theme.color(for: gender))
+                                            .padding(12)
+                                            .background(Color(UIColor.systemBackground))
+                                            .clipShape(Circle())
+                                            .shadow(radius: 3)
+                                        }
+                                        .padding(.trailing, 32)
+                                        .padding(.bottom, 12)
+                                    }
+                                    .frame(height: heroImageHeight + 32)
+                                }
+                                .frame(height: heroImageHeight + 32)
                 
                 // Content
                 VStack(alignment: .leading, spacing: 24) {
@@ -1129,6 +1296,7 @@ struct MemoryDetailView: View {
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(width: gridImageSize, height: gridImageSize)
+                                    .clipped()  // Add this to prevent overflow
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                                     .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                                     .onTapGesture {
@@ -1137,7 +1305,6 @@ struct MemoryDetailView: View {
                                     }
                             }
                             
-                            // Add Photo Button (if less than 6 photos)
                             if allImages.count < 6 {
                                 Button(action: { showingImageSource = true }) {
                                     VStack(spacing: 12) {
@@ -1282,6 +1449,19 @@ struct MemoryDetailView: View {
                 )
             }
         }
+        .onChange(of: selectedImage) { newImage in
+                    if let image = newImage {
+                        var updatedBabies = babies
+                        if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
+                            if updatedBabies[babyIndex].memories[memoryIndex].additionalImages == nil {
+                                updatedBabies[babyIndex].memories[memoryIndex].additionalImages = []
+                            }
+                            updatedBabies[babyIndex].memories[memoryIndex].additionalImages?.append(image)
+                            babies = updatedBabies
+                        }
+                        selectedImage = nil
+                    }
+                }
     }
     
     private func handleAddToSpace() {
@@ -1461,8 +1641,6 @@ struct FullScreenImageView: View {
         }
     }
 }
-
-// Helper view modifier for pinch-to-zoom
 struct PinchToZoom: ViewModifier {
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
@@ -1496,7 +1674,7 @@ extension View {
 }
 struct BabySpaceView: View {
     let baby: Baby
-    @Binding var babies: [Baby]  // Add this binding
+    @Binding var babies: [Baby]
         let babyIndex: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
@@ -1513,7 +1691,7 @@ struct BabySpaceView: View {
     
     var body: some View {
         ZStack {
-            // Space Background
+            
             SpaceBackground(isAnimating: $animatingSpace)
                             .onTapGesture {
                                 if selectedBook {
@@ -1523,7 +1701,6 @@ struct BabySpaceView: View {
                                 }
                             }
                         
-                        // Book Content
                         
             GeometryReader { geometry in
                 ZStack {
@@ -1538,8 +1715,8 @@ struct BabySpaceView: View {
                             baby: baby,
                             isOpen: $selectedBook,
                             showingMemoryOptions: $showingMemoryOptions,
-                            babies: $babies,           // Pass the binding
-                            babyIndex: babyIndex,      // Pass the index
+                            babies: $babies,
+                            babyIndex: babyIndex,
                             size: geometry.size
                         )
                         .transition(.asymmetric(
@@ -1673,8 +1850,6 @@ struct MemoryPage: View {
                     .onTapGesture(count: 2) {
                         showingFullScreenImage = true
                     }
-                
-                // Change image button (only if multiple images exist)
                 if allImages.count > 1 {
                     Button {
                         showingImageSelection = true
@@ -1740,11 +1915,11 @@ struct SpaceImageSelectionView: View {
     @State private var selectedImageIndex: Int?
     
     private var gridWidth: CGFloat {
-        UIScreen.main.bounds.width - 40 // 20 padding each side
+        UIScreen.main.bounds.width - 40
     }
     
     private var imageSize: CGFloat {
-        (gridWidth - 15) / 2  // 15 is spacing between images
+        (gridWidth - 15) / 2
     }
     
     var body: some View {
@@ -1795,6 +1970,7 @@ struct SpaceImageSelectionView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                                 .frame(width: imageSize, height: imageSize)
+                                .clipped()
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     ZStack {
@@ -1833,12 +2009,11 @@ struct ImageCell: View {
     
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            // Container for fixed size
             Rectangle()
                 .fill(Color.clear)
                 .frame(width: size, height: size)
                 .overlay(
-                    // Image
+                    
                     Image(uiImage: image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -1846,12 +2021,11 @@ struct ImageCell: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 )
                 .overlay(
-                    // Selection border
+                   
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 3)
                 )
             
-            // Selection indicator
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title2)
@@ -1894,17 +2068,16 @@ struct FloatingBookView: View {
             }
         }) {
             ZStack {
-                // Glow effect
+                
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.white)
                     .blur(radius: 20)
                     .opacity(glowOpacity)
                     .frame(width: 320, height: 440)
                 
-                // Book Cover
+                
                 VStack(spacing: 0) {
                     ZStack {
-                        // Vintage Space Book Design
                         RoundedRectangle(cornerRadius: 12)
                             .fill(
                                 LinearGradient(
@@ -1925,12 +2098,10 @@ struct FloatingBookView: View {
                             )
                         
                         VStack(spacing: 25) {
-                            // Title
                             Text(baby.name + "'s")
                                 .font(.custom("Baskerville-Bold", size: 32))
                                 .foregroundColor(.gold)
                             
-                            // Decorative Space Icon
                             Image(systemName: "sparkles.square.filled.on.square")
                                 .font(.system(size: 60))
                                 .foregroundColor(.gold)
@@ -1940,7 +2111,6 @@ struct FloatingBookView: View {
                                 .font(.custom("Baskerville", size: 24))
                                 .foregroundColor(.gold)
                             
-                            // Decorative elements
                             HStack(spacing: 20) {
                                 ForEach(0..<3) { _ in
                                     Image(systemName: "star.fill")
@@ -1959,7 +2129,7 @@ struct FloatingBookView: View {
         .rotation3DEffect(.degrees(rotation), axis: (x: 0, y: 1, z: 0))
         .offset(y: hover)
         .onAppear {
-            // Start floating animation
+            
             withAnimation(
                 Animation
                     .easeInOut(duration: 3)
@@ -1969,7 +2139,7 @@ struct FloatingBookView: View {
                 hover = -20
             }
             
-            // Start glowing animation
+            
             withAnimation(
                 Animation
                     .easeInOut(duration: 2)
@@ -2017,10 +2187,10 @@ struct OpenBookView: View {
     let baby: Baby
     @Binding var isOpen: Bool
     @Binding var showingMemoryOptions: Bool
-    @Binding var babies: [Baby]  // Add this binding
-    let babyIndex: Int          // Add this parameter
+    @Binding var babies: [Baby]
+    let babyIndex: Int
     let size: CGSize
-    @State private var currentPage = -1 // -1 for cover, 0 for intro
+    @State private var currentPage = -1
     @State private var pageRotation: Double = 0
     @State private var dragOffset: CGFloat = 0
     @GestureState private var dragState = DragState.inactive
@@ -2031,20 +2201,17 @@ struct OpenBookView: View {
     
     var body: some View {
         ZStack {
-            // Book Base (Right Side)
+            
             BookBase()
                 .shadow(color: .black.opacity(0.3), radius: 20, x: 10, y: 0)
             
-            // Pages
+            
             ZStack {
-                // Previous page (if any)
                 if currentPage > -1 {
                     getPage(for: currentPage - 1)
                         .rotation3DEffect(.degrees(-pageRotation), axis: (x: 0, y: 1, z: 0), anchor: .leading)
                         .zIndex(1)
                 }
-                
-                // Current page
                 getPage(for: currentPage)
                     .rotation3DEffect(.degrees(pageRotation), axis: (x: 0, y: 1, z: 0), anchor: .leading)
                     .zIndex(2)
@@ -2064,7 +2231,6 @@ struct OpenBookView: View {
                     }
             )
             
-            // Memory Options Button (only show for memory pages)
             if currentPage > 0 {
                 VStack {
                     HStack {
@@ -2091,12 +2257,9 @@ struct OpenBookView: View {
             isPresented: $showingMemoryOptions,
             titleVisibility: .visible
         ) {
-//            Button("Add New Memory") {
-//                // Navigate to add memory view
-//            }
+
             if currentPage > 0 {
                 Button("Delete Memory", role: .destructive) {
-                    // Delete current memory
                     previousPage()
                 }
             }
@@ -2148,7 +2311,7 @@ struct OpenBookView: View {
     }
 
     
-    // Keep all existing animation functions exactly the same
+    
     private func updatePageRotation(dragState: DragState) {
         let dragAmount = dragState.translation.width
         let normalized = min(max(-180, dragAmount), 180)
@@ -2156,8 +2319,6 @@ struct OpenBookView: View {
     }
 }
 
-
-// Helper struct for drag state
 enum DragState: Equatable {
     case inactive
     case dragging(translation: CGSize)
@@ -2171,7 +2332,6 @@ enum DragState: Equatable {
         }
     }
     
-    // Implement Equatable
     static func == (lhs: DragState, rhs: DragState) -> Bool {
         switch (lhs, rhs) {
         case (.inactive, .inactive):
@@ -2184,11 +2344,10 @@ enum DragState: Equatable {
     }
 }
 
-// Book Base View
 struct BookBase: View {
     var body: some View {
         ZStack {
-            // Book spine shadow
+            
             Rectangle()
                 .fill(
                     LinearGradient(
@@ -2204,7 +2363,6 @@ struct BookBase: View {
                 .frame(width: 20)
                 .offset(x: -10)
             
-            // Book pages
             Rectangle()
                 .fill(Color(white: 0.95))
                 .overlay(
@@ -2219,7 +2377,7 @@ struct BookCover: View {
     
     var body: some View {
         ZStack {
-            // Cover background
+           
             Rectangle()
                 .fill(
                     LinearGradient(
@@ -2266,16 +2424,11 @@ struct IntroductionPage: View {
     
     var body: some View {
         ZStack {
-            // Page background with subtle texture
             Color(white: 0.98)
-//                .overlay(
-//                    Image("paper_texture1") // Add a subtle paper texture image
-//                        .resizable()
-//                        .opacity(0.6)
-//                )
+
             
             VStack(spacing: 30) {
-                // Decorative header
+               
                 VStack(spacing: 15) {
                     Image(systemName: "star.circle.fill")
                         .font(.system(size: 40))
@@ -2290,7 +2443,6 @@ struct IntroductionPage: View {
                 }
                 .foregroundColor(.black.opacity(0.8))
                 
-                // Decorative divider
                 HStack {
                     Line()
                     Image(systemName: "sparkles")
@@ -2299,14 +2451,12 @@ struct IntroductionPage: View {
                 }
                 .frame(width: 200)
                 
-                // Baby details
                 VStack(spacing: 15) {
                     DetailRow(icon: "calendar", title: "Born on", value: baby.birthDate.formatted(date: .long, time: .omitted))
                     DetailRow(icon: "clock", title: "Age", value: baby.age)
                 }
                 .padding(.vertical)
                 
-                // Navigation hint
                 VStack(spacing: 8) {
                     Text("Swipe to explore memories")
                         .font(.custom("Baskerville-Italic", size: 16))
@@ -2348,7 +2498,6 @@ struct EmptyPage: View {
                     .font(.custom("Baskerville-Bold", size: 24))
                     .foregroundColor(.black.opacity(0.6))
                 
-                // Quote section
                 VStack(spacing: 15) {
                     Text("")
                         .font(.system(size: 40))
@@ -2369,7 +2518,6 @@ struct EmptyPage: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onAppear {
-            // Update quote when page appears
             quote = EndingQuotes.randomQuote()
         }
     }
@@ -2405,17 +2553,17 @@ extension Color {
 struct SpaceBackground: View {
     @Binding var isAnimating: Bool
     
-    // Stars properties
+    
     private let starCount = 100
     @State private var starOpacities: [Double]
     @State private var starScales: [CGFloat]
     @State private var starPositions: [CGPoint]
     
-    // Shooting stars
+    
     @State private var shootingStars: [ShootingStar] = []
     private let shootingStarInterval: Double = 3.0
     
-    // Nebula properties
+    
     @State private var nebulaOffset = CGPoint.zero
     private let nebulaColors: [Color] = [
         Color(red: 0.4, green: 0.2, blue: 0.6).opacity(0.3),
@@ -2426,7 +2574,6 @@ struct SpaceBackground: View {
     init(isAnimating: Binding<Bool>) {
         self._isAnimating = isAnimating
         
-        // Initialize random star properties
         let screenWidth = UIScreen.main.bounds.width
         let screenHeight = UIScreen.main.bounds.height
         
@@ -2443,16 +2590,16 @@ struct SpaceBackground: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Deep space background
+                
                 Color.black.ignoresSafeArea()
                 
-                // Nebula effects
+                
                 ForEach(0..<3) { index in
                     NebulaEffect(color: nebulaColors[index], offset: $nebulaOffset)
                         .opacity(isAnimating ? 1 : 0.5)
                 }
                 
-                // Stars
+                
                 ForEach(0..<starCount, id: \.self) { index in
                     Circle()
                         .fill(Color.white)
@@ -2472,7 +2619,6 @@ struct SpaceBackground: View {
                         )
                 }
                 
-                // Shooting stars
                 ForEach(shootingStars) { star in
                     ShootingStarView(star: star)
                 }
@@ -2487,7 +2633,7 @@ struct SpaceBackground: View {
     private func startAnimations() {
         isAnimating = true
         
-        // Animate stars
+        
         for i in 0..<starCount {
             withAnimation(
                 Animation
@@ -2500,7 +2646,6 @@ struct SpaceBackground: View {
             }
         }
         
-        // Animate nebula
         withAnimation(
             Animation
                 .easeInOut(duration: 8)
@@ -2524,7 +2669,6 @@ struct SpaceBackground: View {
                 )
                 shootingStars.append(newStar)
                 
-                // Remove star after animation
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                     shootingStars.removeAll { $0.id == newStar.id }
                 }
@@ -2608,12 +2752,11 @@ struct EndingQuotes {
     }
 }
 
-// Add this struct near other model definitions
 struct Reminder: Identifiable {
     let id: UUID
     let memoryId: UUID
     var date: Date
-    var title: String // Add this
+    var title: String
     var notes: String
     var voiceRecordingURL: URL?
     var isCompleted: Bool
@@ -2622,7 +2765,7 @@ struct Reminder: Identifiable {
         id: UUID = UUID(),
         memoryId: UUID,
         date: Date,
-        title: String = "", // Add this
+        title: String = "",
         notes: String = "",
         voiceRecordingURL: URL? = nil,
         isCompleted: Bool = false
@@ -2637,7 +2780,6 @@ struct Reminder: Identifiable {
     }
 }
 
-// 1. Make AudioPlayerManager conform to ObservableObject
 class AudioPlayerManager: NSObject, AVAudioPlayerDelegate, ObservableObject {
     @Published var isPlaying: Bool = false
     var audioPlayer: AVAudioPlayer?
@@ -2662,18 +2804,16 @@ class AudioPlayerManager: NSObject, AVAudioPlayerDelegate, ObservableObject {
         isPlaying = false
     }
     
-    // AVAudioPlayerDelegate
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         isPlaying = false
     }
 }
 
-// Update ReminderView
 struct ReminderView: View {
     @Binding var memory: Memory
     @Binding var babies: [Baby]
     let babyIndex: Int
-    var isEditing: Bool = false  // Add this parameter with default value
+    var isEditing: Bool = false
     @Environment(\.dismiss) private var dismiss
     
     @State private var reminderDate = Date()
@@ -2807,7 +2947,6 @@ struct ReminderView: View {
     
     private func saveReminder() {
         if isEditing {
-            // When editing, append new notes to existing ones
             let existingNotes = memory.reminder?.notes ?? ""
             let newNotes = existingNotes.isEmpty ? notes : "\(existingNotes)\n\n\(notes)"
             
@@ -2819,15 +2958,12 @@ struct ReminderView: View {
                 notes: newNotes,
                 voiceRecordingURL: recordingURL
             )
-            
-            // Update the reminder
             var updatedBabies = babies
             if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
                 updatedBabies[babyIndex].memories[memoryIndex].reminder = reminder
                 babies = updatedBabies
             }
         } else {
-            // Create new reminder (existing implementation)
             let reminder = Reminder(
                 memoryId: memory.id,
                 date: reminderDate,
@@ -2843,7 +2979,6 @@ struct ReminderView: View {
             }
         }
         
-        // Schedule notification (existing implementation)
         scheduleNotification()
         
         dismiss()
@@ -2866,7 +3001,6 @@ struct ReminderView: View {
     private func deleteReminder() {
         var updatedBabies = babies
         if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
-            // Remove notification
             if let reminder = memory.reminder {
                 UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
             }
@@ -2895,7 +3029,6 @@ struct ReminderView: View {
     }
 }
 
-// 3. Fix RemindersListView toolbar
 struct RemindersListView: View {
     @Binding var babies: [Baby]
     let babyIndex: Int
@@ -2962,10 +3095,8 @@ struct RemindersListView: View {
         for index in indexSet {
             let (memory, reminder) = sortedReminders[index]
             if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
-                // Remove notification
                 UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
                 
-                // Remove reminder
                 updatedBabies[babyIndex].memories[memoryIndex].reminder = nil
             }
         }
@@ -2973,12 +3104,11 @@ struct RemindersListView: View {
     }
 }
 
-// 2. Update ReminderCard to use memory title when reminder title is empty
 struct ReminderCard: View {
     let memory: Memory
     let reminder: Reminder
-    @Binding var babies: [Baby]  // Add this
-    let babyIndex: Int          // Add this
+    @Binding var babies: [Baby]
+    let babyIndex: Int
     @StateObject private var audioManager = AudioPlayerManager()
     @State private var timeRemaining: String = ""
     @State private var isUnlocked: Bool = false
@@ -3009,7 +3139,7 @@ struct ReminderCard: View {
         isUnlocked = Date() >= reminder.date
         
         if isUnlocked && wasLocked {
-            // Start glowing animation when just unlocked
+           
             withAnimation(Animation.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
                 glowOpacity = 0.8
             }
@@ -3032,14 +3162,14 @@ struct ReminderCard: View {
     }
     
     var body: some View {
-        Button(action: { 
+        Button(action: {
             if isUnlocked {
                 showingDetail = true
             }
         }) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {  // Changed from .topLeading to .top
-                    ZStack(alignment: .topLeading) {  // This one is correct
+                HStack(alignment: .top) {
+                    ZStack(alignment: .topLeading) {
                         Image(uiImage: memory.image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -3086,7 +3216,6 @@ struct ReminderCard: View {
                 Group {
                     if isUnlocked {
                         ZStack {
-                            // Glowing background
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(
                                     LinearGradient(
@@ -3099,7 +3228,6 @@ struct ReminderCard: View {
                                     )
                                 )
                             
-                            // Animated particles
                             ForEach(0..<12) { index in
                                 Circle()
                                     .fill(
@@ -3124,7 +3252,6 @@ struct ReminderCard: View {
                                     )
                             }
                             
-                            // Shimmering effect
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(
                                     LinearGradient(
@@ -3139,9 +3266,7 @@ struct ReminderCard: View {
                                 )
                                 .offset(x: showShimmer ? 200 : -200)
                                 .opacity(0.3)
-                            
-                            // Border glow
-                            RoundedRectangle(cornerRadius: 12)
+                                RoundedRectangle(cornerRadius: 12)
                                 .strokeBorder(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
@@ -3194,16 +3319,11 @@ struct ReminderCard: View {
     }
     
     private func startUnlockAnimation() {
-        // Show ribbon immediately without animation
         ribbonOpacity = 1
-        
-        // Initial animation burst
         withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
             scale = 1.05
             rotationAngle = 2
         }
-        
-        // Return to normal with subtle pulsing
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             withAnimation(
                 Animation
@@ -3214,11 +3334,7 @@ struct ReminderCard: View {
                 rotationAngle = -2
             }
         }
-        
-        // Start confetti animation
         showConfetti = true
-        
-        // Start shimmer animation
         withAnimation(
             Animation
                 .linear(duration: 3)
@@ -3226,14 +3342,10 @@ struct ReminderCard: View {
         ) {
             showShimmer = true
         }
-        
-        // Add ribbon animation
         withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
             ribbonOffset = 0
             ribbonScale = 1
         }
-        
-        // Subtle ribbon bounce
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             withAnimation(
                 Animation
@@ -3246,7 +3358,7 @@ struct ReminderCard: View {
     }
 }
 
-// Add this new view for showing reminder details
+
 struct ReminderDetailView: View {
     let memory: Memory
     let reminder: Reminder
@@ -3256,7 +3368,7 @@ struct ReminderDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingNotesInput = false
     @State private var showingVoiceRecording = false
-    @State private var showingDeleteAlert = false  // Add this
+    @State private var showingDeleteAlert = false
     
     private var isUnlocked: Bool {
         Date() >= reminder.date
@@ -3266,15 +3378,12 @@ struct ReminderDetailView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Memory Image
                     Image(uiImage: memory.image)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(height: 200)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal)
-                    
-                    // Memory Details
                     VStack(alignment: .leading, spacing: 16) {
                         Text(reminder.title)
                             .font(.title2)
@@ -3284,7 +3393,6 @@ struct ReminderDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
-                        // Notes Section
                         if !reminder.notes.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Notes")
@@ -3310,8 +3418,6 @@ struct ReminderDetailView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                         }
-                        
-                        // Voice Note Section
                         if let url = reminder.voiceRecordingURL {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Voice Note")
@@ -3353,8 +3459,6 @@ struct ReminderDetailView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                         }
-                        
-                        // Edit Options - Always show when not unlocked
                         if !isUnlocked {
                             VStack(spacing: 16) {
                                 Button(action: { showingNotesInput = true }) {
@@ -3445,10 +3549,8 @@ struct ReminderDetailView: View {
     private func deleteReminder() {
         var updatedBabies = babies
         if let memoryIndex = updatedBabies[babyIndex].memories.firstIndex(where: { $0.id == memory.id }) {
-            // Remove notification
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
             
-            // Remove reminder
             updatedBabies[babyIndex].memories[memoryIndex].reminder = nil
             babies = updatedBabies
         }
@@ -3456,7 +3558,7 @@ struct ReminderDetailView: View {
     }
 }
 
-// Update NotesInputView
+
 struct NotesInputView: View {
     let memory: Memory
     let reminder: Reminder
@@ -3502,7 +3604,7 @@ struct NotesInputView: View {
             babies = updatedBabies
         }
         
-        dismissSheet()  // Only dismiss the sheet, not the parent view
+        dismissSheet()
     }
 }
 
@@ -3561,7 +3663,6 @@ struct VoiceRecordingView: View {
         }
     }
     
-    // Add necessary functions for voice recording management
     private func toggleRecording() {
         if isRecording {
             stopRecording()
@@ -3620,7 +3721,7 @@ struct VoiceRecordingView: View {
                 babies = updatedBabies
             }
         }
-        dismiss()  // Only dismiss this sheet
+        dismiss()  
     }
 }
 
