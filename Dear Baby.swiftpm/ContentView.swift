@@ -116,11 +116,6 @@ struct ContentView: View {
                     )
                  ], 
                  gender: .boy),
-//            Baby(id: UUID(), name: "Kaashvi", 
-//                 birthDate: Calendar.current.date(byAdding: .month, value: -9, to: Date())!, 
-//                 image: UIImage(named: "kaashvi") ?? UIImage(systemName: "person.circle.fill")!, 
-//                 memories: [], 
-//                 gender: .girl)
         ]
         _babies = State(initialValue: demoBabies)
     }
@@ -183,13 +178,12 @@ struct ContentView: View {
                 }
         .actionSheet(isPresented: $showingBabyPicker) {
             ActionSheet(
-//                title: Text("Select Baby"),
-//                buttons: babies.enumerated().map { index, baby in
+
                 title: Text("Baby Profile"),
                                 message: Text("Select an existing profile or create new"),
                                 buttons: [
                                     .default(Text("Add New Profile")) {
-                                        showingNewProfileSheet = true  // New state variable
+                                        showingNewProfileSheet = true
                                     }
                                 ] + babies.enumerated().map { index, baby in
                     .default(Text(baby.name)) {
@@ -204,71 +198,10 @@ struct ContentView: View {
 struct AddNewProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var babies: [Baby]
-//    @State private var name = ""
-//    @State private var birthDate = Date()
-//    @State private var gender: Gender = .girl
-//    @State private var profileImage: UIImage = UIImage(systemName: "person.circle.fill")!
-//    @State private var showingImagePicker = false
-//    
-//    var body: some View {
-//        NavigationView {
-//            Form {
-//                Section(header: Text("Profile Photo")) {
-//                    HStack {
-//                        Spacer()
-//                        Image(uiImage: profileImage)
-//                            .resizable()
-//                            .scaledToFill()
-//                            .frame(width: 120, height: 120)
-//                            .clipShape(Circle())
-//                            .overlay(Circle().stroke(Color.gray, lineWidth: 2))
-//                            .onTapGesture {
-//                                showingImagePicker = true
-//                            }
-//                        Spacer()
-//                    }
-//                    .padding(.vertical)
-//                }
-//                
-//                Section(header: Text("Details")) {
-//                    TextField("Baby's Name", text: $name)
-//                    DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
-//                    Picker("Gender", selection: $gender) {
-//                        Text("Girl").tag(Gender.girl)
-//                        Text("Boy").tag(Gender.boy)
-//                    }
-//                }
-//                            }
-//                            .navigationTitle("New Profile")
-//                            .navigationBarItems(
-//                                leading: Button("Cancel") {
-//                                    dismiss()
-//                                },
-//                                trailing: Button("Add") {
-//                                    let newBaby = Baby(
-//                                        id: UUID(),
-//                                        name: name,
-//                                        birthDate: birthDate,
-//                                        image: profileImage,
-//                                        memories: [],
-//                                        gender: gender
-//                                    )
-//                                    babies.append(newBaby)
-//                                    dismiss()
-//                                }
-//                                .disabled(name.isEmpty)
-//                            )
-//                        }
-//                        .sheet(isPresented: $showingImagePicker) {
-//                            ImagePicker(image: $profileImage, sourceType: .photoLibrary)
-//                        }
-//                    }
-//                }
-  
     @State private var name = ""
     @State private var birthDate = Date()
     @State private var gender: Gender = .girl
-    @State private var profileImage: UIImage? = UIImage(systemName: "person.circle.fill")  // Make it optional
+    @State private var profileImage: UIImage? = UIImage(systemName: "person.circle.fill")
     @State private var showingImagePicker = false
     
     var body: some View {
@@ -277,7 +210,7 @@ struct AddNewProfileView: View {
                 Section(header: Text("Profile Photo")) {
                     HStack {
                         Spacer()
-                        Image(uiImage: profileImage ?? UIImage(systemName: "person.circle.fill")!)  // Add nil coalescing
+                        Image(uiImage: profileImage ?? UIImage(systemName: "person.circle.fill")!)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 120, height: 120)
@@ -310,7 +243,7 @@ struct AddNewProfileView: View {
                         id: UUID(),
                         name: name,
                         birthDate: birthDate,
-                        image: profileImage ?? UIImage(systemName: "person.circle.fill")!,  // Add nil coalescing
+                        image: profileImage ?? UIImage(systemName: "person.circle.fill")!,
                         memories: [],
                         gender: gender
                     )
@@ -321,7 +254,7 @@ struct AddNewProfileView: View {
             )
         }
         .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $profileImage, sourceType: .photoLibrary)  // Now this will work
+            ImagePicker(image: $profileImage, sourceType: .photoLibrary)
         }
     }
 }
@@ -1501,12 +1434,12 @@ struct MemoryDetailView: View {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                     Button(action: {
-                        // Edit action
+                        
                     }) {
                         Label("Edit", systemImage: "pencil")
                     }
                     Button(role: .destructive, action: {
-                        // Delete action
+                        
                     }) {
                         Label("Delete", systemImage: "trash")
                     }
