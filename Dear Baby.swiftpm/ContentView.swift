@@ -74,6 +74,7 @@ struct ContentView: View {
     @State private var selectedBabyIndex = 0
     @State private var showingSettings = false
     @State private var showingBabyPicker = false
+    @State private var showingNewProfileSheet = false
     @State private var babies: [Baby]
     
     
@@ -115,11 +116,11 @@ struct ContentView: View {
                     )
                  ], 
                  gender: .boy),
-            Baby(id: UUID(), name: "Kaashvi", 
-                 birthDate: Calendar.current.date(byAdding: .month, value: -9, to: Date())!, 
-                 image: UIImage(named: "kaashvi") ?? UIImage(systemName: "person.circle.fill")!, 
-                 memories: [], 
-                 gender: .girl)
+//            Baby(id: UUID(), name: "Kaashvi", 
+//                 birthDate: Calendar.current.date(byAdding: .month, value: -9, to: Date())!, 
+//                 image: UIImage(named: "kaashvi") ?? UIImage(systemName: "person.circle.fill")!, 
+//                 memories: [], 
+//                 gender: .girl)
         ]
         _babies = State(initialValue: demoBabies)
     }
@@ -177,10 +178,20 @@ struct ContentView: View {
             }
             .tag(2)
         }
+        .sheet(isPresented: $showingNewProfileSheet) {
+                    AddNewProfileView(babies: $babies)
+                }
         .actionSheet(isPresented: $showingBabyPicker) {
             ActionSheet(
-                title: Text("Select Baby"),
-                buttons: babies.enumerated().map { index, baby in
+//                title: Text("Select Baby"),
+//                buttons: babies.enumerated().map { index, baby in
+                title: Text("Baby Profile"),
+                                message: Text("Select an existing profile or create new"),
+                                buttons: [
+                                    .default(Text("Add New Profile")) {
+                                        showingNewProfileSheet = true  // New state variable
+                                    }
+                                ] + babies.enumerated().map { index, baby in
                     .default(Text(baby.name)) {
                         selectedBabyIndex = index
                     }
@@ -190,6 +201,130 @@ struct ContentView: View {
     }
 }
 
+struct AddNewProfileView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var babies: [Baby]
+//    @State private var name = ""
+//    @State private var birthDate = Date()
+//    @State private var gender: Gender = .girl
+//    @State private var profileImage: UIImage = UIImage(systemName: "person.circle.fill")!
+//    @State private var showingImagePicker = false
+//    
+//    var body: some View {
+//        NavigationView {
+//            Form {
+//                Section(header: Text("Profile Photo")) {
+//                    HStack {
+//                        Spacer()
+//                        Image(uiImage: profileImage)
+//                            .resizable()
+//                            .scaledToFill()
+//                            .frame(width: 120, height: 120)
+//                            .clipShape(Circle())
+//                            .overlay(Circle().stroke(Color.gray, lineWidth: 2))
+//                            .onTapGesture {
+//                                showingImagePicker = true
+//                            }
+//                        Spacer()
+//                    }
+//                    .padding(.vertical)
+//                }
+//                
+//                Section(header: Text("Details")) {
+//                    TextField("Baby's Name", text: $name)
+//                    DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
+//                    Picker("Gender", selection: $gender) {
+//                        Text("Girl").tag(Gender.girl)
+//                        Text("Boy").tag(Gender.boy)
+//                    }
+//                }
+//                            }
+//                            .navigationTitle("New Profile")
+//                            .navigationBarItems(
+//                                leading: Button("Cancel") {
+//                                    dismiss()
+//                                },
+//                                trailing: Button("Add") {
+//                                    let newBaby = Baby(
+//                                        id: UUID(),
+//                                        name: name,
+//                                        birthDate: birthDate,
+//                                        image: profileImage,
+//                                        memories: [],
+//                                        gender: gender
+//                                    )
+//                                    babies.append(newBaby)
+//                                    dismiss()
+//                                }
+//                                .disabled(name.isEmpty)
+//                            )
+//                        }
+//                        .sheet(isPresented: $showingImagePicker) {
+//                            ImagePicker(image: $profileImage, sourceType: .photoLibrary)
+//                        }
+//                    }
+//                }
+  
+    @State private var name = ""
+    @State private var birthDate = Date()
+    @State private var gender: Gender = .girl
+    @State private var profileImage: UIImage? = UIImage(systemName: "person.circle.fill")  // Make it optional
+    @State private var showingImagePicker = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Profile Photo")) {
+                    HStack {
+                        Spacer()
+                        Image(uiImage: profileImage ?? UIImage(systemName: "person.circle.fill")!)  // Add nil coalescing
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 120, height: 120)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.gray, lineWidth: 2))
+                            .onTapGesture {
+                                showingImagePicker = true
+                            }
+                        Spacer()
+                    }
+                    .padding(.vertical)
+                }
+                
+                Section(header: Text("Details")) {
+                    TextField("Baby's Name", text: $name)
+                    DatePicker("Birth Date", selection: $birthDate, in: ...Date(), displayedComponents: .date)
+                    Picker("Gender", selection: $gender) {
+                        Text("Girl").tag(Gender.girl)
+                        Text("Boy").tag(Gender.boy)
+                    }
+                }
+            }
+            .navigationTitle("New Profile")
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    dismiss()
+                },
+                trailing: Button("Add") {
+                    let newBaby = Baby(
+                        id: UUID(),
+                        name: name,
+                        birthDate: birthDate,
+                        image: profileImage ?? UIImage(systemName: "person.circle.fill")!,  // Add nil coalescing
+                        memories: [],
+                        gender: gender
+                    )
+                    babies.append(newBaby)
+                    dismiss()
+                }
+                .disabled(name.isEmpty)
+            )
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(image: $profileImage, sourceType: .photoLibrary)  // Now this will work
+        }
+    }
+}
 struct OnboardingPage {
     let title: String
     let subtitle: String
@@ -3721,7 +3856,7 @@ struct VoiceRecordingView: View {
                 babies = updatedBabies
             }
         }
-        dismiss()  
+        dismiss()
     }
 }
 
